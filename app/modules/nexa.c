@@ -4,7 +4,11 @@
 
 const int nexa_pulse_high_us = 245;
 const int nexa_pulse_low_us = 260;
+const int nexa_channel = 0x3; // 0b11
 const int nexa_repeat = 5;
+
+#define NEXA_ON 0
+#define NEXA_OFF 1
 
 static void nexa_write_pulse(int pin, int high, int low)
 {
@@ -47,6 +51,7 @@ static void nexa_write(int pin, uint32_t data)
 static void nexa_send(int pin, uint32_t id, bool nogroup, bool off, uint8_t chan, uint8_t unit, int repeat)
 {
   uint32_t data = (
+    // bits: id[26] !group !on chan[2] unit[2] = 32 bits
     (id << 6) | (nogroup ? 0x20 : 0) | (off ? 0x10 : 0) | ((chan & 0x3) << 2) | ((unit & 0x3) << 0)
   );
 
@@ -57,12 +62,12 @@ static void nexa_send(int pin, uint32_t id, bool nogroup, bool off, uint8_t chan
 
 static inline void nexa_send_on(int pin, uint32_t id, uint8_t unit, int repeat)
 {
-  nexa_send(pin, id, !!unit, 0, 0x11, unit, repeat);
+  nexa_send(pin, id, !!unit, NEXA_ON, nexa_channel, unit, repeat);
 }
 
 static inline void nexa_send_off(int pin, uint32_t id, uint8_t unit, int repeat)
 {
-  nexa_send(pin, id, !!unit, 1, 0x11, unit, repeat);
+  nexa_send(pin, id, !!unit, NEXA_OFF, nexa_channel, unit, repeat);
 }
 
 static int nexa_lua_write(lua_State *L)

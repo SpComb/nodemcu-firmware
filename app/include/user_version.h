@@ -8,7 +8,7 @@
 
 #define NODE_VERSION	"NodeMCU 2.1.0+qmsk-nexa_2"
 #ifndef BUILD_DATE
-#define BUILD_DATE	  "20170628"
+#define BUILD_DATE	  "20170722"
 #endif
 
 extern char SDK_VERSION[];
