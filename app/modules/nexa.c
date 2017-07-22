@@ -4,11 +4,15 @@
 
 const int nexa_pulse_high_us = 245;
 const int nexa_pulse_low_us = 260;
-const int nexa_channel = 0x3; // 0b11
 const int nexa_repeat = 5;
+
+#define NEXA_SINGLE 0
+#define NEXA_GROUP 1
 
 #define NEXA_ON 0
 #define NEXA_OFF 1
+
+#define NEXA_CHAN 0
 
 static void nexa_write_pulse(int pin, int high, int low)
 {
@@ -26,11 +30,11 @@ static inline void nexa_write_sync(int pin)
 static inline void nexa_write_bit(int pin, int bit)
 {
   if (bit) {
-    nexa_write_pulse(pin, 1, 1);
     nexa_write_pulse(pin, 1, 5);
+    nexa_write_pulse(pin, 1, 1);
   } else {
-    nexa_write_pulse(pin, 1, 5);
     nexa_write_pulse(pin, 1, 1);
+    nexa_write_pulse(pin, 1, 5);
   }
 }
 
@@ -48,11 +52,17 @@ static void nexa_write(int pin, uint32_t data)
     nexa_write_pause(pin);
 }
 
-static void nexa_send(int pin, uint32_t id, bool nogroup, bool off, uint8_t chan, uint8_t unit, int repeat)
+// @param pin GPIOX
+// @param id 26-bit ID
+// @param group 1-bit NEXA_GROUP/SINGLE
+// @param on 1-bit NEXA_ON/OFF
+// @param chan 2-bit NEXA_CHAN
+// @param unit 2-bit
+static void nexa_send(int pin, uint32_t id, bool group, bool on, uint8_t chan, uint8_t unit, int repeat)
 {
   uint32_t data = (
     // bits: id[26] !group !on chan[2] unit[2] = 32 bits
-    (id << 6) | (nogroup ? 0x20 : 0) | (off ? 0x10 : 0) | ((chan & 0x3) << 2) | ((unit & 0x3) << 0)
+    (id << 6) | (group ? 0x20 : 0) | (on ? 0x10 : 0) | ((chan & 0x3) << 2) | ((unit & 0x3) << 0)
   );
 
   for (int i = 0; i < repeat; i++) {
@@ -60,14 +70,20 @@ static void nexa_send(int pin, uint32_t id, bool nogroup, bool off, uint8_t chan
   }
 }
 
+// @param id 26-bit
+// @param unit 0 = all, 1-3 = channel
+// @param repeat
 static inline void nexa_send_on(int pin, uint32_t id, uint8_t unit, int repeat)
 {
-  nexa_send(pin, id, !!unit, NEXA_ON, nexa_channel, unit, repeat);
+  nexa_send(pin, id, !unit, NEXA_ON, NEXA_CHAN, unit - 1, repeat);
 }
 
+// @param id 26-bit
+// @param unit 0 = all, 1-3 = channel
+// @param repeat
 static inline void nexa_send_off(int pin, uint32_t id, uint8_t unit, int repeat)
 {
-  nexa_send(pin, id, !!unit, NEXA_OFF, nexa_channel, unit, repeat);
+  nexa_send(pin, id, !unit, NEXA_OFF, NEXA_CHAN, unit - 1, repeat);
 }
 
 static int nexa_lua_write(lua_State *L)
@@ -146,6 +162,14 @@ static const LUA_REG_TYPE nexa_map[] =
   { LSTRKEY("send"),        LFUNCVAL(nexa_lua_send) },
   { LSTRKEY("on"),          LFUNCVAL(nexa_lua_on) },
   { LSTRKEY("off"),         LFUNCVAL(nexa_lua_off) },
+
+  // constants
+  { LSTRKEY( "SINGLE" ),    LNUMVAL( NEXA_SINGLE ) },
+  { LSTRKEY( "GROUP" ),     LNUMVAL( NEXA_GROUP ) },
+  { LSTRKEY( "ON" ),        LNUMVAL( NEXA_ON ) },
+  { LSTRKEY( "OFF" ),       LNUMVAL( NEXA_OFF ) },
+  { LSTRKEY( "CHAN" ),      LNUMVAL( NEXA_CHAN ) },
+
   { LNILKEY, LNILVAL }
 };
 
