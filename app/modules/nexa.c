@@ -2,6 +2,34 @@
 #include "lauxlib.h"
 #include "platform.h"
 
+/*
+# Protocol
+
+433Mhz OOK
+
+T = 280us
+H @210-280us = high
+L @240us = low
+
+## Symbols
+
+S @2860us = H ~10L?
+A @520us  = H L
+B @1530us = H 5L
+P @9940us = H ~40L?
+
+0 @2050us = AB = H L H 5L
+1 @2050us = BA = H 5L H L
+
+## Packet
+
+packet @68_600us = S I26 GO CCEE P
+
+# Examples
+
+* ch3 on `11100111011111100001111001111101` #XXX: invert bits
+
+*/
 const int nexa_pulse_high_us = 245;
 const int nexa_pulse_low_us = 260;
 const int nexa_repeat = 5;
@@ -47,7 +75,6 @@ static inline void nexa_write_pause(int pin)
 {
   nexa_write_pulse(pin, 1, 40);
 }
-
 
 // Sending one frame takes 68.6ms
 //
