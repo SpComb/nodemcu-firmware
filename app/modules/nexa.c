@@ -12,7 +12,12 @@ const int nexa_repeat = 5;
 #define NEXA_ON 0
 #define NEXA_OFF 1
 
-#define NEXA_CHAN 0
+#define NEXA_TYPE 0
+
+#define NEXA_UNIT_ALL 0
+#define NEXA_UNIT_1 1
+#define NEXA_UNIT_2 2
+#define NEXA_UNIT_3 3
 
 static void nexa_write_pulse(int pin, int high, int low)
 {
@@ -43,6 +48,11 @@ static inline void nexa_write_pause(int pin)
   nexa_write_pulse(pin, 1, 40);
 }
 
+
+// Sending one frame takes 68.6ms
+//
+// @param pin GPIO*
+// @param data 32-bit frame
 static void nexa_write(int pin, uint32_t data)
 {
     nexa_write_sync(pin);
@@ -52,17 +62,19 @@ static void nexa_write(int pin, uint32_t data)
     nexa_write_pause(pin);
 }
 
+// Each repeat is 68.6ms
+//
 // @param pin GPIOX
 // @param id 26-bit ID
 // @param group 1-bit NEXA_GROUP/SINGLE
 // @param on 1-bit NEXA_ON/OFF
-// @param chan 2-bit NEXA_CHAN
-// @param unit 2-bit
-static void nexa_send(int pin, uint32_t id, bool group, bool on, uint8_t chan, uint8_t unit, int repeat)
+// @param type 2-bit NEXA_TYPE
+// @param chan 2-bit
+static void nexa_send(int pin, uint32_t id, bool group, bool on, uint8_t type, uint8_t chan, int repeat)
 {
   uint32_t data = (
     // bits: id[26] !group !on chan[2] unit[2] = 32 bits
-    (id << 6) | (group ? 0x20 : 0) | (on ? 0x10 : 0) | ((chan & 0x3) << 2) | ((unit & 0x3) << 0)
+    (id << 6) | (group ? 0x20 : 0) | (on ? 0x10 : 0) | ((type & 0x3) << 2) | ((chan & 0x3) << 0)
   );
 
   for (int i = 0; i < repeat; i++) {
@@ -71,19 +83,19 @@ static void nexa_send(int pin, uint32_t id, bool group, bool on, uint8_t chan, u
 }
 
 // @param id 26-bit
-// @param unit 0 = all, 1-3 = channel
+// @param unit NEXA_UNIT_ALL/1/2/3
 // @param repeat
 static inline void nexa_send_on(int pin, uint32_t id, uint8_t unit, int repeat)
 {
-  nexa_send(pin, id, !unit, NEXA_ON, NEXA_CHAN, unit - 1, repeat);
+  nexa_send(pin, id, !unit, NEXA_ON, NEXA_TYPE, unit - 1, repeat);
 }
 
 // @param id 26-bit
-// @param unit 0 = all, 1-3 = channel
+// @param unit NEXA_UNIT_ALL/1/2/3
 // @param repeat
 static inline void nexa_send_off(int pin, uint32_t id, uint8_t unit, int repeat)
 {
-  nexa_send(pin, id, !unit, NEXA_OFF, NEXA_CHAN, unit - 1, repeat);
+  nexa_send(pin, id, !unit, NEXA_OFF, NEXA_TYPE, unit - 1, repeat);
 }
 
 static int nexa_lua_write(lua_State *L)
@@ -107,8 +119,8 @@ static int nexa_lua_send(lua_State *L)
   unsigned int id = luaL_checkinteger(L, 2);
   unsigned int nogroup = luaL_checkinteger(L, 3);
   unsigned int off = luaL_checkinteger(L, 4);
-  unsigned int chan = luaL_checkinteger(L, 5);
-  unsigned int unit = luaL_checkinteger(L, 6);
+  unsigned int type = luaL_checkinteger(L, 5);
+  unsigned int chan = luaL_checkinteger(L, 6);
   unsigned int repeat = luaL_optinteger(L, 7, nexa_repeat);
 
   MOD_CHECK_ID(gpio, pin);
@@ -116,7 +128,7 @@ static int nexa_lua_send(lua_State *L)
   if (platform_gpio_mode(pin, PLATFORM_GPIO_OUTPUT, PLATFORM_GPIO_FLOAT) < 0)
     return luaL_error(L, "invalid gpio");
 
-  nexa_send(pin, id, nogroup, off, chan, unit, repeat);
+  nexa_send(pin, id, nogroup, off, type, chan, repeat);
 
   return 0;
 }
@@ -168,7 +180,11 @@ static const LUA_REG_TYPE nexa_map[] =
   { LSTRKEY( "GROUP" ),     LNUMVAL( NEXA_GROUP ) },
   { LSTRKEY( "ON" ),        LNUMVAL( NEXA_ON ) },
   { LSTRKEY( "OFF" ),       LNUMVAL( NEXA_OFF ) },
-  { LSTRKEY( "CHAN" ),      LNUMVAL( NEXA_CHAN ) },
+  { LSTRKEY( "TYPE" ),      LNUMVAL( NEXA_TYPE ) },
+  { LSTRKEY( "UNIT_ALL" ),  LNUMVAL( NEXA_UNIT_ALL ) },
+  { LSTRKEY( "UNIT_1" ),    LNUMVAL( NEXA_UNIT_1 ) },
+  { LSTRKEY( "UNIT_2" ),    LNUMVAL( NEXA_UNIT_2 ) },
+  { LSTRKEY( "UNIT_3" ),    LNUMVAL( NEXA_UNIT_3 ) },
 
   { LNILKEY, LNILVAL }
 };
