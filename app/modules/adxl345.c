@@ -75,6 +75,8 @@
 #define ADXL345_FIFO_STATUS_TRIG 0x80
 #define ADXL345_FIFO_STATUS_ENTRIES_MASK 0x3F
 
+#define CHECK_MASK(mask, value) (((~mask) & (value)) == 0)
+
 static const unsigned adxl345_i2c_id = 0;
 static const uint16_t adxl345_i2c_addr = 0x53;
 
@@ -205,18 +207,6 @@ static int Ladxl345_get(lua_State* L) {
   return 1;
 }
 
-static int Ladxl345_set(lua_State* L) {
-  unsigned reg = luaL_checkinteger(L, 1);
-  unsigned value = luaL_checkinteger(L, 2);
-
-  luaL_argcheck(L, reg <= 0xff, 1, "invalid register 0x00..ff");
-  luaL_argcheck(L, value <= 0xff, 2, "invalid 8-bit value");
-
-  adxl345_write_u8(reg, value);
-
-  return 0;
-}
-
 static int Ladxl345_get_offset(lua_State* L) {
   int8_t ofs[3];
 
@@ -227,6 +217,30 @@ static int Ladxl345_get_offset(lua_State* L) {
   lua_pushinteger(L, ofs[2]);
 
   return 3;
+}
+
+static int Ladxl345_get_fifo_status(lua_State* L) {
+  uint8_t fifo_status = adxl345_read_u8(ADXL345_REG_FIFO_STATUS);
+
+  int fifo_trigger = fifo_status & ADXL345_FIFO_STATUS_TRIG;
+  int fifo_entries = fifo_status & ADXL345_FIFO_STATUS_ENTRIES_MASK;
+
+  lua_pushboolean(L, fifo_trigger);
+  lua_pushinteger(L, fifo_entries);
+
+  return 2;
+}
+
+static int Ladxl345_set(lua_State* L) {
+  unsigned reg = luaL_checkinteger(L, 1);
+  unsigned value = luaL_checkinteger(L, 2);
+
+  luaL_argcheck(L, reg <= 0xff, 1, "invalid register 0x00..ff");
+  luaL_argcheck(L, value <= 0xff, 2, "invalid 8-bit value");
+
+  adxl345_write_u8(reg, value);
+
+  return 0;
 }
 
 static int Ladxl345_set_offset(lua_State* L) {
@@ -243,20 +257,6 @@ static int Ladxl345_set_offset(lua_State* L) {
   return 0;
 }
 
-static int Ladxl345_get_fifo_status(lua_State* L) {
-  uint8_t fifo_status = adxl345_read_u8(ADXL345_REG_FIFO_STATUS);
-
-  int fifo_trigger = fifo_status & ADXL345_FIFO_STATUS_TRIG;
-  int fifo_entries = fifo_status & ADXL345_FIFO_STATUS_ENTRIES_MASK;
-
-  lua_pushboolean(L, fifo_trigger);
-  lua_pushinteger(L, fifo_entries);
-
-  return 2;
-}
-
-#define CHECK_MASK(mask, value) (((~mask) & (value)) == 0)
-
 static int Ladxl345_set_fifo_ctl(lua_State* L) {
   unsigned mode = luaL_checkinteger(L, 1);
   unsigned trigger = luaL_checkinteger(L, 2);
@@ -272,11 +272,11 @@ static int Ladxl345_set_fifo_ctl(lua_State* L) {
 }
 
 static const LUA_REG_TYPE Ladxl345_map[] = {
-    { LSTRKEY( "get" ),          LFUNCVAL( Ladxl345_get )},
-    { LSTRKEY( "set" ),          LFUNCVAL( Ladxl345_set )},
-    { LSTRKEY( "get_offset" ),   LFUNCVAL( Ladxl345_get_offset )},
-    { LSTRKEY( "set_offset" ),      LFUNCVAL( Ladxl345_set_offset )},
+    { LSTRKEY( "get" ),             LFUNCVAL( Ladxl345_get )},
+    { LSTRKEY( "get_offset" ),      LFUNCVAL( Ladxl345_get_offset )},
     { LSTRKEY( "get_fifo_status" ), LFUNCVAL( Ladxl345_get_fifo_status )},
+    { LSTRKEY( "set" ),             LFUNCVAL( Ladxl345_set )},
+    { LSTRKEY( "set_offset" ),      LFUNCVAL( Ladxl345_set_offset )},
     { LSTRKEY( "set_fifo_ctl" ),    LFUNCVAL( Ladxl345_set_fifo_ctl )},
 
     { LSTRKEY( "read" ),         LFUNCVAL( Ladxl345_read )},
