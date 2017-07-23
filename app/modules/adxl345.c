@@ -26,6 +26,7 @@
 
 #define ADXL345_DEVID 0xE5
 
+#define ADXL345_ACT_INACT_CTL_MASK 0xff
 #define ADXL345_ACT_CTL_DC 0x00
 #define ADXL345_ACT_CTL_AC 0x80
 #define ADXL345_ACT_CTL_X 0x40
@@ -58,6 +59,7 @@
 #define ADXL345_INT_WATERMARK 0x02
 #define ADXL345_INT_OVERRUN 0x01
 
+#define ADXL345_DATA_FORMAT_MASK 0xff
 #define ADXL345_DATA_FORMAT_SELF_TEST 0x80
 #define ADXL345_DATA_FORMAT_SPI 0x40
 #define ADXL345_DATA_FORMAT_INT_INVERT 0x20
@@ -165,6 +167,100 @@ static void adxl345_write_off(uint8_t reg, int8_t v1, int8_t v2, int8_t v3) {
 }
 
 // Lua API
+static int Ladxl345_config(lua_State* L) {
+    luaL_checktype(L, 1, LUA_TTABLE);
+
+    lua_getfield(L, 1, "ofs_x");
+    lua_getfield(L, 1, "ofs_y");
+    lua_getfield(L, 1, "ofs_z");
+    if (!lua_isnil(L, -1) && !lua_isnil(L, -2) && !lua_isnil(L, -3)) {
+      int x = luaL_checkint(L, -3);
+      int y = luaL_checkint(L, -2);
+      int z = luaL_checkint(L, -1);
+
+      adxl345_write_off(ADXL345_REG_OFS, x, y, z);
+    }
+    lua_pop(L, 3);
+
+    lua_getfield(L, 1, "thresh_act");
+    if (!lua_isnil(L, -1)) {
+      unsigned thresh_act = luaL_checkint(L, -1);
+
+      luaL_argcheck(L, CHECK_MASK(0xff, thresh_act), 1, "invalid thresh_act");
+
+      adxl345_write(ADXL345_REG_THRES_ACT, thresh_act);
+    }
+    lua_pop(L, 1);
+
+    lua_getfield(L, 1, "thresh_inact");
+    if (!lua_isnil(L, -1)) {
+      unsigned thresh_inact = luaL_checkint(L, -1);
+
+      luaL_argcheck(L, CHECK_MASK(0xff, thresh_inact), 1, "invalid thresh_inact");
+
+      adxl345_write(ADXL345_REG_THRES_INACT, thresh_inact);
+    }
+    lua_pop(L, 1);
+
+    lua_getfield(L, 1, "time_inact");
+    if (!lua_isnil(L, -1)) {
+      unsigned time_inact = luaL_checkint(L, -1);
+
+      luaL_argcheck(L, CHECK_MASK(0xff, time_inact), 1, "invalid time_inact");
+
+      adxl345_write(ADXL345_REG_TIME_INACT, time_inact);
+    }
+    lua_pop(L, 1);
+
+    lua_getfield(L, 1, "act_inact_ctl");
+    if (!lua_isnil(L, -1)) {
+      unsigned ctl = luaL_checkint(L, -1);
+
+      luaL_argcheck(L, CHECK_MASK(ADXL345_ACT_INACT_CTL_MASK, ctl), 1, "invalid act_inact_ctl");
+
+      adxl345_write(ADXL345_REG_ACT_INACT_CTL, ctl);
+    }
+    lua_pop(L, 1);
+
+    lua_getfield(L, 1, "int_map");
+    if (!lua_isnil(L, -1)) {
+      unsigned ints = luaL_checkint(L, -1);
+
+      luaL_argcheck(L, CHECK_MASK(ADXL345_INT_MASK, ints), 1, "invalid int_map");
+
+      adxl345_write(ADXL345_REG_INT_MAP, ints);
+    }
+    lua_pop(L, 1);
+
+    lua_getfield(L, 1, "data_format");
+    if (!lua_isnil(L, -1)) {
+      unsigned data_format = luaL_checkint(L, -1);
+
+      luaL_argcheck(L, CHECK_MASK(ADXL345_DATA_FORMAT_MASK, data_format), 1, "invalid data_format");
+
+      adxl345_write(ADXL345_REG_DATA_FORMAT, data_format);
+    }
+    lua_pop(L, 1);
+
+    lua_getfield(L, 1, "fifo_mode");
+    lua_getfield(L, 1, "fifo_trigger");
+    lua_getfield(L, 1, "fifo_samples");
+    if (!lua_isnil(L, -1) || !lua_isnil(L, -2) || !lua_isnil(L, -3)) {
+      unsigned fifo_mode = luaL_optint(L, -3, 0);
+      unsigned fifo_trigger = luaL_optint(L, -2, 0);
+      unsigned fifo_samples = luaL_optint(L, -1, 0);
+
+      luaL_argcheck(L, CHECK_MASK(ADXL345_FIFO_MODE_MASK, fifo_mode), 1, "invalid fifo_mode");
+      luaL_argcheck(L, CHECK_MASK(ADXL345_FIFO_TRIGGER_MASK, fifo_trigger), 1, "invalid fifo_trigger");
+      luaL_argcheck(L, CHECK_MASK(ADXL345_FIFO_SAMPLES_MASK, fifo_samples), 1, "invalid fifo_samples");
+
+      adxl345_write(ADXL345_REG_FIFO_CTL, fifo_mode | fifo_trigger | fifo_samples);
+    }
+    lua_pop(L, 3);
+
+    return 0;
+}
+
 static int Ladxl345_setup(lua_State* L) {
     uint8_t  devid;
 
@@ -355,10 +451,23 @@ static const LUA_REG_TYPE Ladxl345_map[] = {
     { LSTRKEY( "read_fifo" ),       LFUNCVAL( Ladxl345_read_fifo )},
     { LSTRKEY( "read_interrupts" ), LFUNCVAL( Ladxl345_read_interrupts )},
     { LSTRKEY( "setup" ),           LFUNCVAL( Ladxl345_setup )},
+    { LSTRKEY( "config" ),          LFUNCVAL( Ladxl345_config )},
     /// init() is deprecated
     { LSTRKEY( "init" ),            LFUNCVAL( Ladxl345_init )},
 
     // constants
+    { LSTRKEY( "ACT_INACT_CTL_MASK" ), LNUMVAL( ADXL345_ACT_INACT_CTL_MASK ) },
+    { LSTRKEY( "ACT_CTL_DC" ),         LNUMVAL( ADXL345_ACT_CTL_DC ) },
+    { LSTRKEY( "ACT_CTL_AC" ),         LNUMVAL( ADXL345_ACT_CTL_AC ) },
+    { LSTRKEY( "ACT_CTL_X" ),          LNUMVAL( ADXL345_ACT_CTL_X ) },
+    { LSTRKEY( "ACT_CTL_Y" ),          LNUMVAL( ADXL345_ACT_CTL_Y ) },
+    { LSTRKEY( "ACT_CTL_Z" ),          LNUMVAL( ADXL345_ACT_CTL_Z ) },
+    { LSTRKEY( "INACT_CTL_DC" ),       LNUMVAL( ADXL345_INACT_CTL_DC ) },
+    { LSTRKEY( "INACT_CTL_AC" ),       LNUMVAL( ADXL345_INACT_CTL_AC ) },
+    { LSTRKEY( "INACT_CTL_X" ),        LNUMVAL( ADXL345_INACT_CTL_X ) },
+    { LSTRKEY( "INACT_CTL_Y" ),        LNUMVAL( ADXL345_INACT_CTL_Y ) },
+    { LSTRKEY( "INACT_CTL_Z" ),        LNUMVAL( ADXL345_INACT_CTL_Z ) },
+
     { LSTRKEY( "POWER_CTL_LINK" ),       LNUMVAL( ADXL345_POWER_CTL_LINK ) },
     { LSTRKEY( "POWER_CTL_AUTO_SLEEP" ), LNUMVAL( ADXL345_POWER_CTL_AUTO_SLEEP ) },
     { LSTRKEY( "POWER_CTL_MEASURE" ),    LNUMVAL( ADXL345_POWER_CTL_MEASURE ) },
@@ -376,6 +485,16 @@ static const LUA_REG_TYPE Ladxl345_map[] = {
     { LSTRKEY( "INT_FREE_FALL" ),  LNUMVAL( ADXL345_INT_FREE_FALL ) },
     { LSTRKEY( "INT_WATERMARK" ),  LNUMVAL( ADXL345_INT_WATERMARK ) },
     { LSTRKEY( "INT_OVERRUN" ),    LNUMVAL( ADXL345_INT_OVERRUN ) },
+
+    { LSTRKEY( "DATA_FORMAT_SELF_TEST" ),  LNUMVAL( ADXL345_DATA_FORMAT_SELF_TEST ) },
+    { LSTRKEY( "DATA_FORMAT_SPI" ),        LNUMVAL( ADXL345_DATA_FORMAT_SPI ) },
+    { LSTRKEY( "DATA_FORMAT_INT_INVERT" ), LNUMVAL( ADXL345_DATA_FORMAT_INT_INVERT ) },
+    { LSTRKEY( "DATA_FORMAT_FULL_RES" ),   LNUMVAL( ADXL345_DATA_FORMAT_FULL_RES ) },
+    { LSTRKEY( "DATA_FORMAT_JUSTIFY" ),    LNUMVAL( ADXL345_DATA_FORMAT_JUSTIFY ) },
+    { LSTRKEY( "DATA_FORMAT_RANGE_2G" ),   LNUMVAL( ADXL345_DATA_FORMAT_RANGE_2G ) },
+    { LSTRKEY( "DATA_FORMAT_RANGE_4G" ),   LNUMVAL( ADXL345_DATA_FORMAT_RANGE_4G ) },
+    { LSTRKEY( "DATA_FORMAT_RANGE_8G" ),   LNUMVAL( ADXL345_DATA_FORMAT_RANGE_8G ) },
+    { LSTRKEY( "DATA_FORMAT_RANGE_16G" ),  LNUMVAL( ADXL345_DATA_FORMAT_RANGE_16G ) },
 
     { LSTRKEY( "FIFO_MODE_BYPASS" ),  LNUMVAL( ADXL345_FIFO_MODE_BYPASS )  },
     { LSTRKEY( "FIFO_MODE_FIFO" ),    LNUMVAL( ADXL345_FIFO_MODE_FIFO )    },
