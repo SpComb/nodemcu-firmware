@@ -270,6 +270,11 @@ static int Ladxl345_setup(lua_State* L) {
         return luaL_error(L, "device not found");
     }
 
+    // config?
+    if (!lua_isnoneornil(L, 1)) {
+      Ladxl345_config(L);
+    }
+
     // Enable sensor
     adxl345_write(ADXL345_REG_POWER_CTL, ADXL345_POWER_CTL_MEASURE);
 
