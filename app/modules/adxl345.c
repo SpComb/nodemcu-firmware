@@ -18,6 +18,7 @@
 #define ADXL345_REG_POWER_CTL 0x2D
 #define ADXL345_REG_INT_ENABLE 0x2E
 #define ADXL345_REG_INT_MAP 0x2F
+#define ADXL345_REG_INT_SOURCE 0x30
 #define ADXL345_REG_DATA_FORMAT 0x31
 #define ADXL345_REG_DATA 0x32 // X0 X1 Y0 Y1 Z0 Z1
 #define ADXL345_REG_FIFO_CTL 0x38
@@ -47,6 +48,7 @@
 #define ADXL345_POWER_CTL_WAKEUP_2HZ 0x02
 #define ADXL345_POWER_CTL_WAKEUP_1HZ 0x03
 
+#define ADXL345_INT_MASK 0xff
 #define ADXL345_INT_DATA_READY 0x80
 #define ADXL345_INT_SINGLE_TAP 0x40
 #define ADXL345_INT_DOUBLE_TAP 0x20
@@ -198,6 +200,14 @@ static int Ladxl345_read(lua_State* L) {
     return 3;
 }
 
+static int Ladxl345_read_interrupts(lua_State* L) {
+  uint8_t ints = adxl345_read_u8(ADXL345_REG_INT_SOURCE);
+
+  lua_pushinteger(L, ints);
+
+  return 1;
+}
+
 static int Ladxl345_get(lua_State* L) {
   unsigned reg = luaL_checkint(L, 1);
   uint8_t value;
@@ -275,6 +285,16 @@ static int Ladxl345_set_fifo_ctl(lua_State* L) {
   return 0;
 }
 
+static int Ladxl345_set_int_enable(lua_State* L) {
+  unsigned ints = luaL_checkint(L, 1);
+
+  luaL_argcheck(L, CHECK_MASK(ADXL345_INT_MASK, ints), 1, "invalid INT_*");
+
+  adxl345_write_u8(ADXL345_REG_INT_ENABLE, ints);
+
+  return 0;
+}
+
 static int Ladxl345_set_power_ctl(lua_State* L) {
   unsigned flags = luaL_checkint(L, 1);
   unsigned wakeup = luaL_optint(L, 2, 0);
@@ -294,12 +314,14 @@ static const LUA_REG_TYPE Ladxl345_map[] = {
     { LSTRKEY( "set" ),             LFUNCVAL( Ladxl345_set )},
     { LSTRKEY( "set_offset" ),      LFUNCVAL( Ladxl345_set_offset )},
     { LSTRKEY( "set_power_ctl" ),   LFUNCVAL( Ladxl345_set_power_ctl )},
+    { LSTRKEY( "set_int_enable" ),  LFUNCVAL( Ladxl345_set_int_enable )},
     { LSTRKEY( "set_fifo_ctl" ),    LFUNCVAL( Ladxl345_set_fifo_ctl )},
 
-    { LSTRKEY( "read" ),         LFUNCVAL( Ladxl345_read )},
-    { LSTRKEY( "setup" ),        LFUNCVAL( Ladxl345_setup )},
+    { LSTRKEY( "read" ),            LFUNCVAL( Ladxl345_read )},
+    { LSTRKEY( "read_interrupts" ), LFUNCVAL( Ladxl345_read_interrupts )},
+    { LSTRKEY( "setup" ),           LFUNCVAL( Ladxl345_setup )},
     /// init() is deprecated
-    { LSTRKEY( "init" ),         LFUNCVAL( Ladxl345_init )},
+    { LSTRKEY( "init" ),            LFUNCVAL( Ladxl345_init )},
 
     // constants
     { LSTRKEY( "POWER_CTL_LINK" ),       LNUMVAL( ADXL345_POWER_CTL_LINK ) },
@@ -310,6 +332,15 @@ static const LUA_REG_TYPE Ladxl345_map[] = {
     { LSTRKEY( "POWER_CTL_WAKEUP_2HZ" ), LNUMVAL( ADXL345_POWER_CTL_WAKEUP_2HZ ) },
     { LSTRKEY( "POWER_CTL_WAKEUP_4HZ" ), LNUMVAL( ADXL345_POWER_CTL_WAKEUP_4HZ ) },
     { LSTRKEY( "POWER_CTL_WAKEUP_8HZ" ), LNUMVAL( ADXL345_POWER_CTL_WAKEUP_8HZ ) },
+
+    { LSTRKEY( "INT_DATA_READY" ), LNUMVAL( ADXL345_INT_DATA_READY ) },
+    { LSTRKEY( "INT_SINGLE_TAP" ), LNUMVAL( ADXL345_INT_SINGLE_TAP ) },
+    { LSTRKEY( "INT_DOUBLE_TAP" ), LNUMVAL( ADXL345_INT_DOUBLE_TAP ) },
+    { LSTRKEY( "INT_ACTIVITY" ),   LNUMVAL( ADXL345_INT_ACTIVITY ) },
+    { LSTRKEY( "INT_INACTIVITY" ), LNUMVAL( ADXL345_INT_INACTIVITY ) },
+    { LSTRKEY( "INT_FREE_FALL" ),  LNUMVAL( ADXL345_INT_FREE_FALL ) },
+    { LSTRKEY( "INT_WATERMARK" ),  LNUMVAL( ADXL345_INT_WATERMARK ) },
+    { LSTRKEY( "INT_OVERRUN" ),    LNUMVAL( ADXL345_INT_OVERRUN ) },
 
     { LSTRKEY( "FIFO_MODE_BYPASS" ),  LNUMVAL( ADXL345_FIFO_MODE_BYPASS )  },
     { LSTRKEY( "FIFO_MODE_FIFO" ),    LNUMVAL( ADXL345_FIFO_MODE_FIFO )    },
