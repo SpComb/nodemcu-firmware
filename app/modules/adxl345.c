@@ -209,6 +209,31 @@ static int Ladxl345_read(lua_State* L) {
     return 3;
 }
 
+static int Ladxl345_read_fifo(lua_State* L) {
+    uint8_t fifo_status = adxl345_read(ADXL345_REG_FIFO_STATUS);
+    int fifo_entries = fifo_status & ADXL345_FIFO_STATUS_ENTRIES_MASK;
+
+    lua_newtable(L);
+
+    for (int i = 1; i <= fifo_entries; i++) {
+      int16_t x, y, z;
+
+      adxl345_read_xyz(ADXL345_REG_DATA, &x, &y, &z);
+
+      lua_newtable(L);
+      lua_pushinteger(L, x);
+      lua_rawseti(L, -2, 1);
+      lua_pushinteger(L, y);
+      lua_rawseti(L, -2, 2);
+      lua_pushinteger(L, z);
+      lua_rawseti(L, -2, 3);
+
+      lua_rawseti(L, -2, i);
+    }
+
+    return 1;
+}
+
 static int Ladxl345_read_interrupts(lua_State* L) {
   uint8_t ints = adxl345_read(ADXL345_REG_INT_SOURCE);
 
@@ -327,6 +352,7 @@ static const LUA_REG_TYPE Ladxl345_map[] = {
     { LSTRKEY( "set_fifo_ctl" ),    LFUNCVAL( Ladxl345_set_fifo_ctl )},
 
     { LSTRKEY( "read" ),            LFUNCVAL( Ladxl345_read )},
+    { LSTRKEY( "read_fifo" ),       LFUNCVAL( Ladxl345_read_fifo )},
     { LSTRKEY( "read_interrupts" ), LFUNCVAL( Ladxl345_read_interrupts )},
     { LSTRKEY( "setup" ),           LFUNCVAL( Ladxl345_setup )},
     /// init() is deprecated
