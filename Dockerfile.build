@@ -5,3 +5,5 @@ RUN apt-get update && apt-get install -y \
 
 ADD tools/esp-open-sdk.tar.xz /opt/
 ENV PATH=$PATH:/opt/esp-open-sdk/xtensa-lx106-elf/bin
+
+CMD ["make"]
