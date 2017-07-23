@@ -216,6 +216,19 @@ static int Ladxl345_set(lua_State* L) {
 
   return 0;
 }
+
+static int Ladxl345_get_offset(lua_State* L) {
+  int8_t ofs[3];
+
+  adxl345_read(ADXL345_REG_OFS, ofs, sizeof(ofs));
+
+  lua_pushinteger(L, ofs[0]);
+  lua_pushinteger(L, ofs[1]);
+  lua_pushinteger(L, ofs[2]);
+
+  return 3;
+}
+
 static int Ladxl345_set_offset(lua_State* L) {
   int x = luaL_checkinteger(L, 1);
   int y = luaL_checkinteger(L, 2);
@@ -233,6 +246,7 @@ static int Ladxl345_set_offset(lua_State* L) {
 static const LUA_REG_TYPE Ladxl345_map[] = {
     { LSTRKEY( "get" ),          LFUNCVAL( Ladxl345_get )},
     { LSTRKEY( "set" ),          LFUNCVAL( Ladxl345_set )},
+    { LSTRKEY( "get_offset" ),   LFUNCVAL( Ladxl345_get_offset )},
     { LSTRKEY( "set_offset" ),   LFUNCVAL( Ladxl345_set_offset )},
     { LSTRKEY( "read" ),         LFUNCVAL( Ladxl345_read )},
     { LSTRKEY( "setup" ),        LFUNCVAL( Ladxl345_setup )},
