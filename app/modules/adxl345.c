@@ -37,11 +37,15 @@
 #define ADXL345_INACT_CTL_Z 0x01
 
 #define ADXL345_POWER_CTL_FLAGS_MASK 0x3C
-#define ADXL345_POWER_CTL_WAKEUP_MASK 0x02
+#define ADXL345_POWER_CTL_WAKEUP_MASK 0x03
 #define ADXL345_POWER_CTL_LINK 0x20
 #define ADXL345_POWER_CTL_AUTO_SLEEP 0x10
 #define ADXL345_POWER_CTL_MEASURE 0x08
 #define ADXL345_POWER_CTL_SLEEP 0x04
+#define ADXL345_POWER_CTL_WAKEUP_8HZ 0x00
+#define ADXL345_POWER_CTL_WAKEUP_4HZ 0x01
+#define ADXL345_POWER_CTL_WAKEUP_2HZ 0x02
+#define ADXL345_POWER_CTL_WAKEUP_1HZ 0x03
 
 #define ADXL345_INT_DATA_READY 0x80
 #define ADXL345_INT_SINGLE_TAP 0x40
@@ -167,8 +171,8 @@ static int Ladxl345_init(lua_State* L) {
 
     platform_print_deprecation_note("adxl345.init() is replaced by adxl345.setup()", "in the next version");
 
-    sda = luaL_checkinteger(L, 1);
-    scl = luaL_checkinteger(L, 2);
+    sda = luaL_checkint(L, 1);
+    scl = luaL_checkint(L, 2);
 
     luaL_argcheck(L, sda > 0 && scl > 0, 1, "no i2c for D0");
 
@@ -195,7 +199,7 @@ static int Ladxl345_read(lua_State* L) {
 }
 
 static int Ladxl345_get(lua_State* L) {
-  unsigned reg = luaL_checkinteger(L, 1);
+  unsigned reg = luaL_checkint(L, 1);
   uint8_t value;
 
   luaL_argcheck(L, reg <= 0xff, 1, "invalid register");
@@ -232,8 +236,8 @@ static int Ladxl345_get_fifo_status(lua_State* L) {
 }
 
 static int Ladxl345_set(lua_State* L) {
-  unsigned reg = luaL_checkinteger(L, 1);
-  unsigned value = luaL_checkinteger(L, 2);
+  unsigned reg = luaL_checkint(L, 1);
+  unsigned value = luaL_checkint(L, 2);
 
   luaL_argcheck(L, reg <= 0xff, 1, "invalid register 0x00..ff");
   luaL_argcheck(L, value <= 0xff, 2, "invalid 8-bit value");
@@ -244,9 +248,9 @@ static int Ladxl345_set(lua_State* L) {
 }
 
 static int Ladxl345_set_offset(lua_State* L) {
-  int x = luaL_checkinteger(L, 1);
-  int y = luaL_checkinteger(L, 2);
-  int z = luaL_checkinteger(L, 3);
+  int x = luaL_checkint(L, 1);
+  int y = luaL_checkint(L, 2);
+  int z = luaL_checkint(L, 3);
 
   luaL_argcheck(L, -128 <= x && x <= 127, 1, "invalid signed 8-bit value");
   luaL_argcheck(L, -128 <= y && y <= 127, 2, "invalid signed 8-bit value");
@@ -258,9 +262,9 @@ static int Ladxl345_set_offset(lua_State* L) {
 }
 
 static int Ladxl345_set_fifo_ctl(lua_State* L) {
-  unsigned mode = luaL_checkinteger(L, 1);
-  unsigned trigger = luaL_checkinteger(L, 2);
-  unsigned samples = luaL_checkinteger(L, 3);
+  unsigned mode = luaL_checkint(L, 1);
+  unsigned trigger = luaL_optint(L, 2, 0);
+  unsigned samples = luaL_optint(L, 3, 0);
 
   luaL_argcheck(L, CHECK_MASK(ADXL345_FIFO_MODE_MASK, mode), 1, "invalid FIFO_MODE_*");
   luaL_argcheck(L, CHECK_MASK(ADXL345_FIFO_TRIGGER_MASK, trigger), 2, "invalid FIFO_TRIGGER_*");
@@ -271,12 +275,25 @@ static int Ladxl345_set_fifo_ctl(lua_State* L) {
   return 0;
 }
 
+static int Ladxl345_set_power_ctl(lua_State* L) {
+  unsigned flags = luaL_checkint(L, 1);
+  unsigned wakeup = luaL_optint(L, 2, 0);
+
+  luaL_argcheck(L, CHECK_MASK(ADXL345_POWER_CTL_FLAGS_MASK, flags), 1, "invalid POWER_CTL_*");
+  luaL_argcheck(L, CHECK_MASK(ADXL345_POWER_CTL_WAKEUP_MASK, wakeup), 2, "invalid POWER_CTL_WAKEUP_*");
+
+  adxl345_write_u8(ADXL345_REG_POWER_CTL, flags | wakeup);
+
+  return 0;
+}
+
 static const LUA_REG_TYPE Ladxl345_map[] = {
     { LSTRKEY( "get" ),             LFUNCVAL( Ladxl345_get )},
     { LSTRKEY( "get_offset" ),      LFUNCVAL( Ladxl345_get_offset )},
     { LSTRKEY( "get_fifo_status" ), LFUNCVAL( Ladxl345_get_fifo_status )},
     { LSTRKEY( "set" ),             LFUNCVAL( Ladxl345_set )},
     { LSTRKEY( "set_offset" ),      LFUNCVAL( Ladxl345_set_offset )},
+    { LSTRKEY( "set_power_ctl" ),   LFUNCVAL( Ladxl345_set_power_ctl )},
     { LSTRKEY( "set_fifo_ctl" ),    LFUNCVAL( Ladxl345_set_fifo_ctl )},
 
     { LSTRKEY( "read" ),         LFUNCVAL( Ladxl345_read )},
@@ -285,6 +302,15 @@ static const LUA_REG_TYPE Ladxl345_map[] = {
     { LSTRKEY( "init" ),         LFUNCVAL( Ladxl345_init )},
 
     // constants
+    { LSTRKEY( "POWER_CTL_LINK" ),       LNUMVAL( ADXL345_POWER_CTL_LINK ) },
+    { LSTRKEY( "POWER_CTL_AUTO_SLEEP" ), LNUMVAL( ADXL345_POWER_CTL_AUTO_SLEEP ) },
+    { LSTRKEY( "POWER_CTL_MEASURE" ),    LNUMVAL( ADXL345_POWER_CTL_MEASURE ) },
+    { LSTRKEY( "POWER_CTL_SLEEP" ),      LNUMVAL( ADXL345_POWER_CTL_SLEEP ) },
+    { LSTRKEY( "POWER_CTL_WAKEUP_1HZ" ), LNUMVAL( ADXL345_POWER_CTL_WAKEUP_1HZ ) },
+    { LSTRKEY( "POWER_CTL_WAKEUP_2HZ" ), LNUMVAL( ADXL345_POWER_CTL_WAKEUP_2HZ ) },
+    { LSTRKEY( "POWER_CTL_WAKEUP_4HZ" ), LNUMVAL( ADXL345_POWER_CTL_WAKEUP_4HZ ) },
+    { LSTRKEY( "POWER_CTL_WAKEUP_8HZ" ), LNUMVAL( ADXL345_POWER_CTL_WAKEUP_8HZ ) },
+
     { LSTRKEY( "FIFO_MODE_BYPASS" ),  LNUMVAL( ADXL345_FIFO_MODE_BYPASS )  },
     { LSTRKEY( "FIFO_MODE_FIFO" ),    LNUMVAL( ADXL345_FIFO_MODE_FIFO )    },
     { LSTRKEY( "FIFO_MODE_STREAM" ),  LNUMVAL( ADXL345_FIFO_MODE_STREAM )  },
