@@ -9,18 +9,19 @@
 #include "c_stdlib.h"
 #include "c_string.h"
 
-static const int ADXL345_REG_DEVID = 0x00;
-static const int ADXL345_REG_THRES_ACT = 0x24;
-static const int ADXL345_REG_THRES_INACT = 0x25;
-static const int ADXL345_REG_TIME_INACT = 0x26;
+static const int ADXL345_REG_DEVID         = 0x00;
+static const int ADXL345_REG_OFS           = 0x1E; // X Y Z
+static const int ADXL345_REG_THRES_ACT     = 0x24;
+static const int ADXL345_REG_THRES_INACT   = 0x25;
+static const int ADXL345_REG_TIME_INACT    = 0x26;
 static const int ADXL345_REG_ACT_INACT_CTL = 0x27;
-static const int ADXL345_REG_POWER_CTL = 0x2D;
-static const int ADXL345_REG_INT_ENABLE = 0x2E;
-static const int ADXL345_REG_INT_MAP = 0x2F;
-static const int ADXL345_REG_DATA_FORMAT = 0x31;
-static const int ADXL345_REG_DATA = 0x30; // X0 X1 Y0 Y1 Z0 Z1
-static const int ADXL345_REG_FIFO_CTL = 0x38;
-static const int ADXL345_REG_FIFO_STATUS = 0x39;
+static const int ADXL345_REG_POWER_CTL     = 0x2D;
+static const int ADXL345_REG_INT_ENABLE    = 0x2E;
+static const int ADXL345_REG_INT_MAP       = 0x2F;
+static const int ADXL345_REG_DATA_FORMAT   = 0x31;
+static const int ADXL345_REG_DATA          = 0x32; // X0 X1 Y0 Y1 Z0 Z1
+static const int ADXL345_REG_FIFO_CTL      = 0x38;
+static const int ADXL345_REG_FIFO_STATUS   = 0x39;
 
 static const int ADXL345_DEVID = 0xE5;
 
@@ -137,6 +138,10 @@ static void adxl345_write_u8(uint8_t reg, uint8_t val) {
     adxl345_send1(reg, val);
 }
 
+static void adxl345_write_3i8(uint8_t reg, int8_t v1, int8_t v2, int8_t v3) {
+    adxl345_send3(reg, v1, v2, v3);
+}
+
 // Lua API
 static int Ladxl345_setup(lua_State* L) {
     uint8_t  devid;
@@ -211,10 +216,24 @@ static int Ladxl345_set(lua_State* L) {
 
   return 0;
 }
+static int Ladxl345_set_offset(lua_State* L) {
+  int x = luaL_checkinteger(L, 1);
+  int y = luaL_checkinteger(L, 2);
+  int z = luaL_checkinteger(L, 3);
+
+  luaL_argcheck(L, -128 <= x && x <= 127, 1, "invalid signed 8-bit value");
+  luaL_argcheck(L, -128 <= y && y <= 127, 2, "invalid signed 8-bit value");
+  luaL_argcheck(L, -128 <= z && z <= 127, 3, "invalid signed 8-bit value");
+
+  adxl345_write_3i8(ADXL345_REG_OFS, x, y, z);
+
+  return 0;
+}
 
 static const LUA_REG_TYPE Ladxl345_map[] = {
     { LSTRKEY( "get" ),          LFUNCVAL( Ladxl345_get )},
     { LSTRKEY( "set" ),          LFUNCVAL( Ladxl345_set )},
+    { LSTRKEY( "set_offset" ),   LFUNCVAL( Ladxl345_set_offset )},
     { LSTRKEY( "read" ),         LFUNCVAL( Ladxl345_read )},
     { LSTRKEY( "setup" ),        LFUNCVAL( Ladxl345_setup )},
     /// init() is deprecated
