@@ -9,71 +9,71 @@
 #include "c_stdlib.h"
 #include "c_string.h"
 
-static const int ADXL345_REG_DEVID         = 0x00;
-static const int ADXL345_REG_OFS           = 0x1E; // X Y Z
-static const int ADXL345_REG_THRES_ACT     = 0x24;
-static const int ADXL345_REG_THRES_INACT   = 0x25;
-static const int ADXL345_REG_TIME_INACT    = 0x26;
-static const int ADXL345_REG_ACT_INACT_CTL = 0x27;
-static const int ADXL345_REG_POWER_CTL     = 0x2D;
-static const int ADXL345_REG_INT_ENABLE    = 0x2E;
-static const int ADXL345_REG_INT_MAP       = 0x2F;
-static const int ADXL345_REG_DATA_FORMAT   = 0x31;
-static const int ADXL345_REG_DATA          = 0x32; // X0 X1 Y0 Y1 Z0 Z1
-static const int ADXL345_REG_FIFO_CTL      = 0x38;
-static const int ADXL345_REG_FIFO_STATUS   = 0x39;
+#define ADXL345_REG_DEVID 0x00
+#define ADXL345_REG_OFS 0x1E // X Y Z
+#define ADXL345_REG_THRES_ACT 0x24
+#define ADXL345_REG_THRES_INACT 0x25
+#define ADXL345_REG_TIME_INACT 0x26
+#define ADXL345_REG_ACT_INACT_CTL 0x27
+#define ADXL345_REG_POWER_CTL 0x2D
+#define ADXL345_REG_INT_ENABLE 0x2E
+#define ADXL345_REG_INT_MAP 0x2F
+#define ADXL345_REG_DATA_FORMAT 0x31
+#define ADXL345_REG_DATA 0x32 // X0 X1 Y0 Y1 Z0 Z1
+#define ADXL345_REG_FIFO_CTL 0x38
+#define ADXL345_REG_FIFO_STATUS 0x39
 
-static const int ADXL345_DEVID = 0xE5;
+#define ADXL345_DEVID 0xE5
 
-static const int ADXL345_ACT_CTL_DC = 0x00;
-static const int ADXL345_ACT_CTL_AC = 0x80;
-static const int ADXL345_ACT_CTL_X = 0x40;
-static const int ADXL345_ACT_CTL_Y = 0x20;
-static const int ADXL345_ACT_CTL_Z = 0x10;
-static const int ADXL345_INACT_CTL_DC = 0x00;
-static const int ADXL345_INACT_CTL_AC = 0x08;
-static const int ADXL345_INACT_CTL_X = 0x04;
-static const int ADXL345_INACT_CTL_Y = 0x02;
-static const int ADXL345_INACT_CTL_Z = 0x01;
+#define ADXL345_ACT_CTL_DC 0x00
+#define ADXL345_ACT_CTL_AC 0x80
+#define ADXL345_ACT_CTL_X 0x40
+#define ADXL345_ACT_CTL_Y 0x20
+#define ADXL345_ACT_CTL_Z 0x10
+#define ADXL345_INACT_CTL_DC 0x00
+#define ADXL345_INACT_CTL_AC 0x08
+#define ADXL345_INACT_CTL_X 0x04
+#define ADXL345_INACT_CTL_Y 0x02
+#define ADXL345_INACT_CTL_Z 0x01
 
-static const int ADXL345_POWER_CTL_FLAGS_MASK = 0x3C;
-static const int ADXL345_POWER_CTL_WAKEUP_MASK = 0x02;
-static const int ADXL345_POWER_CTL_LINK = 0x20;
-static const int ADXL345_POWER_CTL_AUTO_SLEEP = 0x10;
-static const int ADXL345_POWER_CTL_MEASURE = 0x08;
-static const int ADXL345_POWER_CTL_SLEEP = 0x04;
+#define ADXL345_POWER_CTL_FLAGS_MASK 0x3C
+#define ADXL345_POWER_CTL_WAKEUP_MASK 0x02
+#define ADXL345_POWER_CTL_LINK 0x20
+#define ADXL345_POWER_CTL_AUTO_SLEEP 0x10
+#define ADXL345_POWER_CTL_MEASURE 0x08
+#define ADXL345_POWER_CTL_SLEEP 0x04
 
-static const int ADXL345_INT_DATA_READY = 0x80;
-static const int ADXL345_INT_SINGLE_TAP = 0x40;
-static const int ADXL345_INT_DOUBLE_TAP = 0x20;
-static const int ADXL345_INT_ACTIVITY = 0x10;
-static const int ADXL345_INT_INACTIVITY = 0x08;
-static const int ADXL345_INT_FREE_FALL = 0x04;
-static const int ADXL345_INT_WATERMARK = 0x02;
-static const int ADXL345_INT_OVERRUN = 0x01;
+#define ADXL345_INT_DATA_READY 0x80
+#define ADXL345_INT_SINGLE_TAP 0x40
+#define ADXL345_INT_DOUBLE_TAP 0x20
+#define ADXL345_INT_ACTIVITY 0x10
+#define ADXL345_INT_INACTIVITY 0x08
+#define ADXL345_INT_FREE_FALL 0x04
+#define ADXL345_INT_WATERMARK 0x02
+#define ADXL345_INT_OVERRUN 0x01
 
-static const int ADXL345_DATA_FORMAT_SELF_TEST = 0x80;
-static const int ADXL345_DATA_FORMAT_SPI = 0x40;
-static const int ADXL345_DATA_FORMAT_INT_INVERT = 0x20;
-static const int ADXL345_DATA_FORMAT_FULL_RES = 0x08;
-static const int ADXL345_DATA_FORMAT_JUSTIFY = 0x04;
-static const int ADXL345_DATA_FORMAT_RANGE_2G = 0x00;
-static const int ADXL345_DATA_FORMAT_RANGE_4G = 0x01;
-static const int ADXL345_DATA_FORMAT_RANGE_8G = 0x02;
-static const int ADXL345_DATA_FORMAT_RANGE_16G = 0x03;
+#define ADXL345_DATA_FORMAT_SELF_TEST 0x80
+#define ADXL345_DATA_FORMAT_SPI 0x40
+#define ADXL345_DATA_FORMAT_INT_INVERT 0x20
+#define ADXL345_DATA_FORMAT_FULL_RES 0x08
+#define ADXL345_DATA_FORMAT_JUSTIFY 0x04
+#define ADXL345_DATA_FORMAT_RANGE_2G 0x00
+#define ADXL345_DATA_FORMAT_RANGE_4G 0x01
+#define ADXL345_DATA_FORMAT_RANGE_8G 0x02
+#define ADXL345_DATA_FORMAT_RANGE_16G 0x03
 
-static const int ADXL345_FIFO_MODE_MASK = 0xC0;
-static const int ADXL345_FIFO_TRIGGER_MASK = 0x20;
-static const int ADXL345_FIFO_SAMPLES_MASK = 0x1F;
-static const int ADXL345_FIFO_MODE_BYPASS = 0x00;
-static const int ADXL345_FIFO_MODE_FIFO = 0x40;
-static const int ADXL345_FIFO_MODE_STREAM = 0x80;
-static const int ADXL345_FIFO_MODE_TRIGGER = 0xC0;
-static const int ADXL345_FIFO_TRIGGER_INT1 = 0x00;
-static const int ADXL345_FIFO_TRIGGER_INT2 = 0x20;
+#define ADXL345_FIFO_MODE_MASK 0xC0
+#define ADXL345_FIFO_TRIGGER_MASK 0x20
+#define ADXL345_FIFO_SAMPLES_MASK 0x1F
+#define ADXL345_FIFO_MODE_BYPASS 0x00
+#define ADXL345_FIFO_MODE_FIFO 0x40
+#define ADXL345_FIFO_MODE_STREAM 0x80
+#define ADXL345_FIFO_MODE_TRIGGER 0xC0
+#define ADXL345_FIFO_TRIGGER_INT1 0x00
+#define ADXL345_FIFO_TRIGGER_INT2 0x20
 
-static const int ADXL345_FIFO_STATUS_TRIG = 0x80;
-static const int ADXL345_FIFO_STATUS_ENTRIES_MASK = 0x3F;
+#define ADXL345_FIFO_STATUS_TRIG 0x80
+#define ADXL345_FIFO_STATUS_ENTRIES_MASK 0x3F
 
 static const unsigned adxl345_i2c_id = 0;
 static const uint16_t adxl345_i2c_addr = 0x53;
@@ -243,15 +243,55 @@ static int Ladxl345_set_offset(lua_State* L) {
   return 0;
 }
 
+static int Ladxl345_get_fifo_status(lua_State* L) {
+  uint8_t fifo_status = adxl345_read_u8(ADXL345_REG_FIFO_STATUS);
+
+  int fifo_trigger = fifo_status & ADXL345_FIFO_STATUS_TRIG;
+  int fifo_entries = fifo_status & ADXL345_FIFO_STATUS_ENTRIES_MASK;
+
+  lua_pushboolean(L, fifo_trigger);
+  lua_pushinteger(L, fifo_entries);
+
+  return 2;
+}
+
+#define CHECK_MASK(mask, value) (((~mask) & (value)) == 0)
+
+static int Ladxl345_set_fifo_ctl(lua_State* L) {
+  unsigned mode = luaL_checkinteger(L, 1);
+  unsigned trigger = luaL_checkinteger(L, 2);
+  unsigned samples = luaL_checkinteger(L, 3);
+
+  luaL_argcheck(L, CHECK_MASK(ADXL345_FIFO_MODE_MASK, mode), 1, "invalid FIFO_MODE_*");
+  luaL_argcheck(L, CHECK_MASK(ADXL345_FIFO_TRIGGER_MASK, trigger), 2, "invalid FIFO_TRIGGER_*");
+  luaL_argcheck(L, CHECK_MASK(ADXL345_FIFO_SAMPLES_MASK, samples), 3, "invalid FIFO_SAMPLES");
+
+  adxl345_write_u8(ADXL345_REG_FIFO_CTL, mode | trigger | samples);
+
+  return 0;
+}
+
 static const LUA_REG_TYPE Ladxl345_map[] = {
     { LSTRKEY( "get" ),          LFUNCVAL( Ladxl345_get )},
     { LSTRKEY( "set" ),          LFUNCVAL( Ladxl345_set )},
     { LSTRKEY( "get_offset" ),   LFUNCVAL( Ladxl345_get_offset )},
-    { LSTRKEY( "set_offset" ),   LFUNCVAL( Ladxl345_set_offset )},
+    { LSTRKEY( "set_offset" ),      LFUNCVAL( Ladxl345_set_offset )},
+    { LSTRKEY( "get_fifo_status" ), LFUNCVAL( Ladxl345_get_fifo_status )},
+    { LSTRKEY( "set_fifo_ctl" ),    LFUNCVAL( Ladxl345_set_fifo_ctl )},
+
     { LSTRKEY( "read" ),         LFUNCVAL( Ladxl345_read )},
     { LSTRKEY( "setup" ),        LFUNCVAL( Ladxl345_setup )},
     /// init() is deprecated
     { LSTRKEY( "init" ),         LFUNCVAL( Ladxl345_init )},
+
+    // constants
+    { LSTRKEY( "FIFO_MODE_BYPASS" ),  LNUMVAL( ADXL345_FIFO_MODE_BYPASS )  },
+    { LSTRKEY( "FIFO_MODE_FIFO" ),    LNUMVAL( ADXL345_FIFO_MODE_FIFO )    },
+    { LSTRKEY( "FIFO_MODE_STREAM" ),  LNUMVAL( ADXL345_FIFO_MODE_STREAM )  },
+    { LSTRKEY( "FIFO_MODE_TRIGGER" ), LNUMVAL( ADXL345_FIFO_MODE_TRIGGER ) },
+    { LSTRKEY( "FIFO_TRIGGER_INT1" ), LNUMVAL( ADXL345_FIFO_TRIGGER_INT1 ) },
+    { LSTRKEY( "FIFO_TRIGGER_INT2" ), LNUMVAL( ADXL345_FIFO_TRIGGER_INT2 ) },
+
     { LNILKEY, LNILVAL}
 };
 
