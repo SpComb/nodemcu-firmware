@@ -22,6 +22,8 @@ static const int ADXL345_REG_DATA = 0x30; // X0 X1 Y0 Y1 Z0 Z1
 static const int ADXL345_REG_FIFO_CTL = 0x38;
 static const int ADXL345_REG_FIFO_STATUS = 0x39;
 
+static const int ADXL345_DEVID = 0xE5;
+
 static const int ADXL345_ACT_CTL_DC = 0x00;
 static const int ADXL345_ACT_CTL_AC = 0x80;
 static const int ADXL345_ACT_CTL_X = 0x40;
@@ -125,13 +127,13 @@ static void adxl345_read(uint8_t reg, uint8_t *data, size_t len) {
 
     return adxl345_recv(data, len);
 }
-static uint8_t adxl345_read_8u(uint8_t reg) {
+static uint8_t adxl345_read_u8(uint8_t reg) {
     adxl345_send0(reg);
 
     return adxl345_recv1();
 }
 
-static void adxl345_write_8u(uint8_t reg, uint8_t val) {
+static void adxl345_write_u8(uint8_t reg, uint8_t val) {
     adxl345_send1(reg, val);
 }
 
@@ -139,14 +141,14 @@ static void adxl345_write_8u(uint8_t reg, uint8_t val) {
 static int Ladxl345_setup(lua_State* L) {
     uint8_t  devid;
 
-    devid = adxl345_read_8u(ADXL345_REG_DEVID);
+    devid = adxl345_read_u8(ADXL345_REG_DEVID);
 
-    if (devid != 229) {
+    if (devid != 0xE5) {
         return luaL_error(L, "device not found");
     }
 
     // Enable sensor
-    adxl345_write_8u(ADXL345_REG_POWER_CTL, ADXL345_POWER_CTL_MEASURE);
+    adxl345_write_u8(ADXL345_REG_POWER_CTL, ADXL345_POWER_CTL_MEASURE);
 
     return 0;
 }
@@ -185,7 +187,34 @@ static int Ladxl345_read(lua_State* L) {
     return 3;
 }
 
+static int Ladxl345_get(lua_State* L) {
+  unsigned reg = luaL_checkinteger(L, 1);
+  uint8_t value;
+
+  luaL_argcheck(L, reg <= 0xff, 1, "invalid register");
+
+  value = adxl345_read_u8(reg);
+
+  lua_pushinteger(L, value);
+
+  return 1;
+}
+
+static int Ladxl345_set(lua_State* L) {
+  unsigned reg = luaL_checkinteger(L, 1);
+  unsigned value = luaL_checkinteger(L, 2);
+
+  luaL_argcheck(L, reg <= 0xff, 1, "invalid register 0x00..ff");
+  luaL_argcheck(L, value <= 0xff, 2, "invalid 8-bit value");
+
+  adxl345_write_u8(reg, value);
+
+  return 0;
+}
+
 static const LUA_REG_TYPE Ladxl345_map[] = {
+    { LSTRKEY( "get" ),          LFUNCVAL( Ladxl345_get )},
+    { LSTRKEY( "set" ),          LFUNCVAL( Ladxl345_set )},
     { LSTRKEY( "read" ),         LFUNCVAL( Ladxl345_read )},
     { LSTRKEY( "setup" ),        LFUNCVAL( Ladxl345_setup )},
     /// init() is deprecated
