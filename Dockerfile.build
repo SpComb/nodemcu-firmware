@@ -1,0 +1,7 @@
+FROM ubuntu:xenial
+
+RUN apt-get update && apt-get install -y \
+  wget unzip git make python-serial srecord bc xz-utils gcc
+
+ADD tools/esp-open-sdk.tar.xz /opt/
+ENV PATH=$PATH:/opt/esp-open-sdk/xtensa-lx106-elf/bin
