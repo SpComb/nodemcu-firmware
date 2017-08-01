@@ -266,7 +266,7 @@ static int Ladxl345_setup(lua_State* L) {
 
     devid = adxl345_read(ADXL345_REG_DEVID);
 
-    if (devid != 0xE5) {
+    if (devid != ADXL345_DEVID) {
         return luaL_error(L, "device not found");
     }
 
